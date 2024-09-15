@@ -4,7 +4,7 @@ import io
 from docx import Document
 import re
 
-st.title("Correcciones mínimas de texto en DOCX")
+st.title("Correcciones ortográficas y gramaticales de texto en DOCX")
 
 # Subir archivo DOCX
 uploaded_file = st.file_uploader("Sube un archivo DOCX", type="docx")
@@ -25,15 +25,20 @@ if uploaded_file is not None:
         pattern = r'\".*?\"'
         quoted_texts = re.findall(pattern, text)
         
-        # Reemplazar citas por un marcador
-        temp_text = re.sub(pattern, '__CITA__', text)
+        # Reemplazar citas por marcadores únicos
+        temp_text = text
+        markers = []
+        for i, quote in enumerate(quoted_texts):
+            marker = f"__CITA_{i}__"
+            temp_text = temp_text.replace(quote, marker)
+            markers.append((marker, quote))
         
         # Llamar a la API de Tune para corregir el texto
         corrected_text = correct_text(temp_text)
         
         # Restaurar las citas textuales
-        for quote in quoted_texts:
-            corrected_text = corrected_text.replace('__CITA__', quote, 1)
+        for marker, quote in markers:
+            corrected_text = corrected_text.replace(marker, quote)
         
         return corrected_text
     
@@ -49,7 +54,7 @@ if uploaded_file is not None:
             "messages": [
                 {
                     "role": "system",
-                    "content": "Eres un corrector de textos"
+                    "content": "Eres un corrector ortográfico y gramatical. Corrige la ortografía y gramática del texto proporcionado, pero **no modifiques** los fragmentos marcados como '__CITA_x__'."
                 },
                 {
                     "role": "user",
