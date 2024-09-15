@@ -1,5 +1,14 @@
 import streamlit as st
 import requests
+from docx import Document
+import io
+
+def extract_text_from_docx(file):
+    doc = Document(file)
+    full_text = []
+    for para in doc.paragraphs:
+        full_text.append(para.text)
+    return '\n'.join(full_text)
 
 def summarize_text(text, percentage, api_key):
     headers = {
@@ -40,11 +49,16 @@ def summarize_text(text, percentage, api_key):
 def main():
     st.title("📝 Resumidor de Documentos con Tune API")
 
-    uploaded_file = st.file_uploader("Sube un documento de texto", type=["txt"])
+    uploaded_file = st.file_uploader("Sube un documento", type=["docx"])
     percentage = st.slider("Selecciona el porcentaje de resumen (%)", 10, 100, 50)
 
     if uploaded_file is not None:
-        text = uploaded_file.read().decode("utf-8")
+        if uploaded_file.type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+            text = extract_text_from_docx(uploaded_file)
+        else:
+            st.error("Por favor, sube un archivo .docx válido.")
+            return
+
         if st.button("Resumir"):
             with st.spinner("Generando resumen..."):
                 api_key = st.secrets["api_key"]
