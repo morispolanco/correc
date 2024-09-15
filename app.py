@@ -12,29 +12,28 @@ def extract_text_from_docx(file):
 
 def summarize_text(text, percentage, api_key):
     headers = {
-        "Authorization": api_key,
+        "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json"
     }
     data = {
-        "temperature": 0.8,
+        "model": "meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo",
         "messages": [
-            {
-                "role": "system",
-                "content": "Eres un corrector de textos\n"
-            },
             {
                 "role": "user",
                 "content": f"Resume el siguiente texto al {percentage}% de su longitud original:\n\n{text}"
             }
         ],
-        "model": "meta/llama-3.1-8b-instruct",
-        "stream": False,
-        "frequency_penalty": 0,
-        "max_tokens": 19451
+        "max_tokens": 2512,
+        "temperature": 0.7,
+        "top_p": 0.7,
+        "top_k": 50,
+        "repetition_penalty": 1.0,
+        "stop": ["<|eot_id|>"],
+        "stream": False
     }
 
     response = requests.post(
-        "https://proxy.tune.app/chat/completions",
+        "https://api.together.xyz/v1/chat/completions",
         headers=headers,
         json=data
     )
@@ -47,7 +46,7 @@ def summarize_text(text, percentage, api_key):
         return f"Error {response.status_code}: {response.text}"
 
 def main():
-    st.title("📝 Resumidor de Documentos con Tune API")
+    st.title("📝 Resumidor de Documentos con Together API")
 
     uploaded_file = st.file_uploader("Sube un documento", type=["docx"])
     percentage = st.slider("Selecciona el porcentaje de resumen (%)", 10, 100, 50)
