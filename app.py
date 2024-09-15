@@ -28,7 +28,7 @@ if uploaded_file is not None:
         # Reemplazar citas por un marcador
         temp_text = re.sub(pattern, '__CITA__', text)
         
-        # Llamar a la API de Together para corregir el texto
+        # Llamar a la API de Tune para corregir el texto
         corrected_text = correct_text(temp_text)
         
         # Restaurar las citas textuales
@@ -37,26 +37,29 @@ if uploaded_file is not None:
         
         return corrected_text
     
-    # Función para llamar a la API de Together
+    # Función para llamar a la API de Tune
     def correct_text(input_text):
-        api_url = "https://api.together.xyz/v1/chat/completions"
+        api_url = "https://proxy.tune.app/chat/completions"
         headers = {
-            "Authorization": f"Bearer {st.secrets['together_api_key']}",
+            "Authorization": f"Bearer {st.secrets['tune_api_key']}",
             "Content-Type": "application/json"
         }
         data = {
-            "model": "meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo",
+            "temperature": 0.8,
             "messages": [
-                {"role": "system", "content": "Eres un corrector ortográfico y gramatical. Haz correcciones mínimas al texto proporcionado, sin cambiar el significado y sin tocar o cambiar las citas textuales encerradas entre comillas."},
-                {"role": "user", "content": input_text}
+                {
+                    "role": "system",
+                    "content": "Eres un corrector de textos"
+                },
+                {
+                    "role": "user",
+                    "content": input_text
+                }
             ],
-            "max_tokens": 2512,
-            "temperature": 0.7,
-            "top_p": 0.7,
-            "top_k": 50,
-            "repetition_penalty": 1,
-            "stop": ["<|eot_id|>"],
-            "stream": False
+            "model": "meta/llama-3.1-8b-instruct",
+            "stream": False,
+            "frequency_penalty": 0,
+            "max_tokens": 19451
         }
         response = requests.post(api_url, headers=headers, json=data)
         if response.status_code == 200:
