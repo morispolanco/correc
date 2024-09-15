@@ -1,69 +1,71 @@
 import streamlit as st
 import requests
-from docx import Document
-import io
+import json
+import docx
 
-def extract_text_from_docx(file):
-    doc = Document(file)
+# Función para cargar el documento docx
+def cargar_documento(file):
+    doc = docx.Document(file)
     full_text = []
     for para in doc.paragraphs:
         full_text.append(para.text)
     return '\n'.join(full_text)
 
-def summarize_text(text, percentage, api_key):
+# Función para resumir el texto usando la API de Tune
+def resumir_con_tune(texto, porcentaje):
+    url = "https://proxy.tune.app/chat/completions"
     headers = {
-        "Authorization": f"Bearer {api_key}",
+        "Authorization": f"Bearer {st.secrets['tune']['api_key']}",
         "Content-Type": "application/json"
     }
-    data = {
-        "model": "meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo",
+    
+    # Calcular max_tokens basado en el porcentaje
+    max_tokens = int(19451 * (porcentaje / 100))
+    
+    payload = {
+        "temperature": 0.7,
         "messages": [
             {
+                "role": "system",
+                "content": "Eres un corrector de textos\n"
+            },
+            {
                 "role": "user",
-                "content": f"Resume el siguiente texto al {percentage}% de su longitud original:\n\n{text}"
+                "content": f"Resumir este texto: {texto}"
             }
         ],
-        "max_tokens": 2512,
-        "temperature": 0.7,
-        "top_p": 0.7,
-        "top_k": 50,
-        "repetition_penalty": 1.0,
-        "stop": ["<|eot_id|>"],
-        "stream": False
+        "model": "meta/llama-3.1-8b-instruct",
+        "stream": False,
+        "frequency_penalty": 0,
+        "max_tokens": max_tokens
     }
 
-    response = requests.post(
-        "https://api.together.xyz/v1/chat/completions",
-        headers=headers,
-        json=data
-    )
+    response = requests.post(url, headers=headers, data=json.dumps(payload))
 
     if response.status_code == 200:
-        result = response.json()
-        summary = result['choices'][0]['message']['content']
-        return summary.strip()
+        resultado = response.json()
+        return resultado['choices'][0]['message']['content']
     else:
-        return f"Error {response.status_code}: {response.text}"
+        st.error("Error al conectarse con la API")
+        return None
 
-def main():
-    st.title("📝 Resumidor de Documentos con Together API")
+# Interfaz de Streamlit
+st.title("App para resumir documentos DOCX")
 
-    uploaded_file = st.file_uploader("Sube un documento", type=["docx"])
-    percentage = st.slider("Selecciona el porcentaje de resumen (%)", 10, 100, 50)
+# Cargar el documento .docx
+archivo_subido = st.file_uploader("Sube un archivo .docx", type=["docx"])
 
-    if uploaded_file is not None:
-        if uploaded_file.type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
-            text = extract_text_from_docx(uploaded_file)
-        else:
-            st.error("Por favor, sube un archivo .docx válido.")
-            return
+# Porcentaje de resumen solicitado
+porcentaje_resumen = st.slider("Selecciona el porcentaje del resumen", 10, 100, 50)
 
-        if st.button("Resumir"):
-            with st.spinner("Generando resumen..."):
-                api_key = st.secrets["api_key"]
-                summary = summarize_text(text, percentage, api_key)
-            st.subheader("Resumen:")
-            st.write(summary)
+if archivo_subido is not None:
+    st.write("Documento cargado:")
+    texto_original = cargar_documento(archivo_subido)
+    st.text_area("Texto original", texto_original, height=300)
 
-if __name__ == "__main__":
-    main()
+    if st.button("Resumir"):
+        with st.spinner("Generando resumen..."):
+            resumen = resumir_con_tune(texto_original, porcentaje_resumen)
+            if resumen:
+                st.subheader("Resumen")
+                st.write(resumen)
